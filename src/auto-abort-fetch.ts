@@ -37,10 +37,6 @@ export type Querys = {
     [k: string]: string | string[];
 };
 
-export type Error = {
-    message: string;
-};
-
 /** url splice querys */
 export const jointQueryInputURL = (url: string, querys: Querys) => {
     let { protocol, hostname, port, path, fragment, query: originQuerys } = parseURL(url);
@@ -160,9 +156,9 @@ export const parseURL = (url: string) => {
 
 let fetching = new Map<string, AbortController>();
 
-export async function autoAbortableFetch<T = any, E = any>(
+export async function autoAbortableFetch<T = any>(
     requestInfo: AutoAbortableFetchRequestInfo
-): Promise<AutoAbortableFetchResponse<T | E> | Error> {
+): Promise<[AutoAbortableFetchResponse<T>, undefined] | [null, Error]> {
     let { url, data } = requestInfo;
 
     if (!url) {
@@ -187,7 +183,8 @@ export async function autoAbortableFetch<T = any, E = any>(
         return new Promise((_, reject) => {
             setTimeout(() => {
                 reject({
-                    message: 'request timeout',
+                    ok: false,
+                    statusText: 'request timeout',
                 });
             }, timeout);
         });
@@ -202,7 +199,7 @@ export async function autoAbortableFetch<T = any, E = any>(
         }),
         requestTimeout(),
     ])
-        .then(async (res) => {
+        .then<[AutoAbortableFetchResponse<T>, undefined]>(async (res) => {
             if (res.ok) {
                 let data: T =
                     responseType === 'document'
@@ -213,21 +210,21 @@ export async function autoAbortableFetch<T = any, E = any>(
                 res.headers.forEach((v, k) => {
                     headers[k] = v;
                 });
-                return {
-                    headers,
-                    data,
-                    success: true,
-                    status: res.status,
-                    statusText: res.statusText,
-                    url: res.url,
-                };
+                return [
+                    {
+                        headers,
+                        data,
+                        success: true,
+                        status: res.status,
+                        statusText: res.statusText,
+                        url: res.url,
+                    },
+                    undefined,
+                ];
             }
-            return Promise.reject(new Error(res.statusText));
+            throw new Error(res.statusText);
         })
-        .catch((err) => {
-            return {
-                name: err.name,
-                message: err.message,
-            };
+        .catch((err: Error) => {
+            return [null, err];
         });
 }
