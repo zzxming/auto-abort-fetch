@@ -1,0 +1,27 @@
+{
+    "name": "auto-abort-fetch",
+    "version": "1.0.0",
+    "description": "Automatically interrupt the last same http request",
+    "main": "dist/auto-abort-fetch.js",
+    "typings": "dist/auto-abort-fetch.d.ts",
+    "scripts": {
+        "build": "tsc",
+        "test": "jest"
+    },
+    "keywords": [
+        "abort",
+        "fetch",
+        "abortController"
+    ],
+    "author": "zzxming",
+    "license": "ISC",
+    "devDependencies": {
+        "@babel/core": "^7.21.3",
+        "@babel/preset-env": "^7.20.2",
+        "@babel/preset-typescript": "^7.21.0",
+        "@types/jest": "^29.5.0",
+        "babel-jest": "^29.5.0",
+        "ts-jest": "^29.0.5",
+        "ts-node": "^10.9.1"
+    }
+}
