@@ -1,4 +1,4 @@
-import { jointQueryInputURL, parseURL, autoAbortableFetch } from '../src/auto-abort-fetch';
+import { jointQueryInputURL, parseURL, autoAbortableFetch } from '../src/auto-abortable-fetch';
 
 describe('测试 autoAbortableFetch', () => {
     it('调用 autoAbortableFetch', () => {

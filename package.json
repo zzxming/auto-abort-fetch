@@ -1,9 +1,9 @@
 {
-    "name": "auto-abort-fetch",
+    "name": "auto-abortable-fetch",
     "version": "1.0.0",
     "description": "Automatically interrupt the last same http request",
-    "main": "dist/auto-abort-fetch.js",
-    "typings": "dist/auto-abort-fetch.d.ts",
+    "main": "dist/auto-abortable-fetch.js",
+    "typings": "dist/auto-abortable-fetch.d.ts",
     "scripts": {
         "build": "tsc",
         "test": "jest"
@@ -11,7 +11,13 @@
     "keywords": [
         "abort",
         "fetch",
-        "abortController"
+        "abortController",
+        "async",
+        "await",
+        "async await"
+    ],
+    "files": [
+        "dist"
     ],
     "author": "zzxming",
     "license": "ISC",

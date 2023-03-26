@@ -228,3 +228,5 @@ export async function autoAbortableFetch<T = any>(
             return [null, err];
         });
 }
+
+export default autoAbortableFetch;
