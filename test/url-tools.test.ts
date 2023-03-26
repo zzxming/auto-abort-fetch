@@ -1,4 +1,4 @@
-import { jointQueryInputURL, parseURL } from '../src/auto-abortable-fetch';
+import { jointQueryInputURL, parseURL } from '../src/utils/url-tools';
 
 describe('测试 url 操作函数', () => {
     it('调用 parseURL', () => {
