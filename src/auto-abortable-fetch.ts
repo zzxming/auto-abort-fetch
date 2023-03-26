@@ -56,9 +56,6 @@ export async function autoAbortableFetch<T = any>(
 
     url = jointQueryInputURL(url, querys);
 
-    fetching.get(url)?.abort();
-    fetching.set(url, controller);
-
     let requestTimeout = (): Promise<Response> => {
         return new Promise((_, reject) => {
             setTimeout(() => {
@@ -70,15 +67,18 @@ export async function autoAbortableFetch<T = any>(
         });
     };
 
-    return Promise.race([
-        fetch(url, {
+    let sendFetch = () => {
+        fetching.get(url)?.abort();
+        fetching.set(url, controller);
+
+        return fetch(url, {
             ...requestInfo,
             method,
             body: data,
             signal,
-        }),
-        requestTimeout(),
-    ])
+        });
+    };
+    return Promise.race([sendFetch(), requestTimeout()])
         .then<[AutoAbortableFetchResponse<T>, undefined]>(async (res) => {
             if (res.ok) {
                 let data: T =
@@ -90,7 +90,7 @@ export async function autoAbortableFetch<T = any>(
                 res.headers.forEach((v, k) => {
                     headers[k] = v;
                 });
-                return [
+                return Promise.resolve([
                     {
                         headers,
                         data,
@@ -100,12 +100,12 @@ export async function autoAbortableFetch<T = any>(
                         url: res.url,
                     },
                     undefined,
-                ];
+                ]);
             }
             throw new Error(res.statusText);
         })
         .catch((err: Error) => {
-            return [null, err];
+            return Promise.reject([null, err]);
         });
 }
 
