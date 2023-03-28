@@ -34,17 +34,28 @@ export interface AutoAbortableFetchResponse<T> {
     url: string;
 }
 
+export interface RejectType {
+    name: string;
+    message: string;
+    code: string;
+}
+
 let fetching = new Map<string, AbortController>();
 
 export async function autoAbortableFetch<T = any>(
     requestInfo: AutoAbortableFetchRequestInfo
-): Promise<[AutoAbortableFetchResponse<T>, undefined] | [null, Error]> {
+): Promise<[AutoAbortableFetchResponse<T>, undefined] | [null, RejectType]> {
     let { url, data } = requestInfo;
 
     if (!url) {
-        return Promise.reject({
-            message: 'missing url parameter',
-        });
+        return Promise.reject([
+            null,
+            {
+                name: 'MissingUrlError',
+                message: 'missing url parameter',
+                code: 'ERR_MISSING_URL',
+            },
+        ]);
     }
 
     let controller = new AbortController();
@@ -59,10 +70,7 @@ export async function autoAbortableFetch<T = any>(
     let requestTimeout = (): Promise<Response> => {
         return new Promise((_, reject) => {
             setTimeout(() => {
-                reject({
-                    ok: false,
-                    statusText: 'request timeout',
-                });
+                reject(new Error('request timeout'));
             }, timeout);
         });
     };
@@ -80,32 +88,36 @@ export async function autoAbortableFetch<T = any>(
     };
     return Promise.race([sendFetch(), requestTimeout()])
         .then<[AutoAbortableFetchResponse<T>, undefined]>(async (res) => {
-            if (res.ok) {
-                let data: T =
-                    responseType === 'document'
-                        ? new DOMParser().parseFromString(await res.text(), 'text/html')
-                        : await res[responseType]();
+            let data: T =
+                responseType === 'document'
+                    ? new DOMParser().parseFromString(await res.text(), 'text/html')
+                    : await res[responseType]();
 
-                let headers: { [k: string]: string } = {};
-                res.headers.forEach((v, k) => {
-                    headers[k] = v;
-                });
-                return Promise.resolve([
-                    {
-                        headers,
-                        data,
-                        success: true,
-                        status: res.status,
-                        statusText: res.statusText,
-                        url: res.url,
-                    },
-                    undefined,
-                ]);
-            }
-            throw new Error(res.statusText);
+            let headers: { [k: string]: string } = {};
+            res.headers.forEach((v, k) => {
+                headers[k] = v;
+            });
+            return [
+                {
+                    headers,
+                    data,
+                    success: true,
+                    status: res.status,
+                    statusText: res.statusText,
+                    url: res.url,
+                },
+                undefined,
+            ];
         })
-        .catch((err: Error) => {
-            return Promise.reject([null, err]);
+        .catch((err) => {
+            return [
+                null,
+                {
+                    name: err.name,
+                    message: err.message,
+                    code: 'ERR_NETWORK',
+                },
+            ];
         });
 }
 
