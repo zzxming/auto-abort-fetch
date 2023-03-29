@@ -1,7 +1,24 @@
 import { jointQueryInputURL } from './utils/url-tools';
-export type ResponseType = 'arrayBuffer' | 'blob' | 'document' | 'json' | 'text';
 
-export interface AutoAbortableFetchRequestInfo {
+export interface AutoAbortableFetchResponse<T> {
+    headers: {
+        [k: string]: string;
+    };
+    ok: boolean;
+    data: T;
+    status: number;
+    statusText: string;
+    url: string;
+}
+export type ResponseType<T> = T extends 'fetch'
+    ? FetchResponseType
+    : T extends 'XMLHtteRequest'
+    ? XMLResponseType
+    : string;
+export type XMLResponseType = 'arraybuffer' | 'blob' | 'document' | 'json' | 'text';
+export type FetchResponseType = 'arrayBuffer' | 'blob' | 'document' | 'json' | 'text';
+
+export interface AutoAbortableFetchRequestInfo<T extends 'fetch' | 'XMLHtteRequest'> {
     url: string;
     headers?: {
         [key: string]: string;
@@ -10,28 +27,12 @@ export interface AutoAbortableFetchRequestInfo {
     timeout?: number;
     querys?: any;
     data?: any;
-    responseType?: ResponseType;
-    signal?: AbortSignal;
-
-    cache?: RequestCache;
-    credentials?: RequestCredentials;
-    destination?: RequestDestination;
-    integrity?: string;
-    keepalive?: boolean;
-    mode?: RequestMode;
-    redirect?: RequestRedirect;
-    referrer?: string;
-    referrerPolicy?: ReferrerPolicy;
-}
-export interface AutoAbortableFetchResponse<T> {
-    headers: {
-        [k: string]: string;
-    };
-    success: boolean;
-    data: T;
-    status: number;
-    statusText: string;
-    url: string;
+    responseType?: ResponseType<T>;
+    // signal?: AbortSignal;
+    withCredentials?: boolean;
+    validateStatus?: ((status: number) => boolean) | null;
+    onUploadProgress?: (progressEvent: ProgressEvent<XMLHttpRequestEventTarget>) => void;
+    onDownloadProgress?: (progressEvent: ProgressEvent<XMLHttpRequestEventTarget>) => void;
 }
 
 export interface RejectType {
@@ -40,84 +41,150 @@ export interface RejectType {
     code: string;
 }
 
-let fetching = new Map<string, AbortController>();
+/** 解码响应头, 整理成对象返回 */
+const decodeResponseHeader = (str: string) => {
+    let headers: { [k: string]: string } = {};
+    str.split('\r\n').forEach((val) => {
+        if (val === '') return;
+        let [k, v] = val.split(': ');
+        headers[k] = decodeURI(v);
+    });
+    return headers;
+};
+
+let defaults = {
+    headers: {},
+    method: 'get',
+    timeout: 5000,
+    querys: {},
+    data: null,
+    responseType: 'json',
+
+    validateStatus: (status: number) => {
+        return status >= 200 && status < 300;
+    },
+    withCredentials: false,
+};
+
+const bindXHRConfig = (xhr: XMLHttpRequest, config: AutoAbortableFetchRequestInfo<'XMLHtteRequest'>) => {
+    let timeout = config.timeout ?? 5000;
+    let responseType = config.responseType ?? 'json';
+    let headers = config.headers ?? {};
+    let withCredentials = config.withCredentials ?? false;
+    let { onDownloadProgress, onUploadProgress } = config;
+
+    xhr.timeout = timeout;
+    xhr.responseType = responseType;
+    xhr.withCredentials = withCredentials;
+    for (let k in headers) {
+        xhr.setRequestHeader(k, headers[k]);
+    }
+    if (typeof onDownloadProgress === 'function') {
+        xhr.addEventListener('progress', onDownloadProgress);
+    }
+    if (typeof onUploadProgress === 'function' && xhr.upload) {
+        xhr.upload.addEventListener('progress', onUploadProgress);
+    }
+};
+let fetching = new Map<string, XMLHttpRequest>();
 
 export async function autoAbortableFetch<T = any>(
-    requestInfo: AutoAbortableFetchRequestInfo
+    requestInfo: AutoAbortableFetchRequestInfo<'XMLHtteRequest'>
 ): Promise<[AutoAbortableFetchResponse<T>, undefined] | [null, RejectType]> {
     let { url, data } = requestInfo;
 
     if (!url) {
-        return Promise.reject([
-            null,
-            {
-                name: 'MissingUrlError',
-                message: 'missing url parameter',
-                code: 'ERR_MISSING_URL',
-            },
-        ]);
+        return Promise.reject({
+            name: 'ParamsError',
+            message: 'missing url parameter',
+            code: 'ERR_MISSING_URL',
+        });
     }
-
-    let controller = new AbortController();
-    let method = requestInfo.method ?? 'get';
-    let timeout = requestInfo.timeout ?? 5000;
-    let querys = requestInfo.querys ?? {};
-    let responseType = requestInfo.responseType ?? 'json';
-    let signal = requestInfo.signal ?? controller.signal;
+    let method = requestInfo.method ?? defaults.method;
+    let querys = requestInfo.querys ?? defaults.querys;
+    let validateStatus = requestInfo.validateStatus ?? defaults.validateStatus;
 
     url = jointQueryInputURL(url, querys);
 
-    let requestTimeout = (): Promise<Response> => {
-        return new Promise((_, reject) => {
-            setTimeout(() => {
-                reject(new Error('request timeout'));
-            }, timeout);
-        });
-    };
-
-    let sendFetch = () => {
+    if (fetching.has(url)) {
         fetching.get(url)?.abort();
-        fetching.set(url, controller);
+    }
+    let xhr = new XMLHttpRequest();
 
-        return fetch(url, {
-            ...requestInfo,
-            method,
-            body: data,
-            signal,
+    return new Promise<AutoAbortableFetchResponse<T>>((resolve, reject) => {
+        // fetching.delete 不能放在 then/catch/finally 中, 进 then/catch/finally 会进微队列, 会在第二次调用 promise 之后执行, 即第二次的 fetching.set 之后
+        fetching.set(url, xhr);
+
+        xhr.addEventListener('readystatechange', () => {
+            if (xhr.readyState === 4) {
+                // get response
+                if (xhr.status === 0) {
+                    return;
+                }
+                let headers = decodeResponseHeader(xhr.getAllResponseHeaders());
+                if (validateStatus(xhr.status)) {
+                    resolve({
+                        headers,
+                        ok: true,
+                        data: xhr.response as T,
+                        status: xhr.status,
+                        statusText: xhr.statusText,
+                        url,
+                    });
+                } else {
+                    resolve({
+                        headers,
+                        ok: false,
+                        data: xhr.response as T,
+                        status: xhr.status,
+                        statusText: xhr.statusText,
+                        url,
+                    });
+                }
+                fetching.delete(url);
+            }
         });
-    };
-    return Promise.race([sendFetch(), requestTimeout()])
-        .then<[AutoAbortableFetchResponse<T>, undefined]>(async (res) => {
-            let data: T =
-                responseType === 'document'
-                    ? new DOMParser().parseFromString(await res.text(), 'text/html')
-                    : await res[responseType]();
-
-            let headers: { [k: string]: string } = {};
-            res.headers.forEach((v, k) => {
-                headers[k] = v;
+        xhr.addEventListener('abort', (e) => {
+            // console.log('abort error', e);
+            reject({
+                name: 'AbortError',
+                message: 'abort',
+                code: 'ERR_ABORT',
+                request: xhr,
             });
-            return [
-                {
-                    headers,
-                    data,
-                    success: true,
-                    status: res.status,
-                    statusText: res.statusText,
-                    url: res.url,
-                },
-                undefined,
-            ];
+            fetching.delete(url);
+        });
+        xhr.addEventListener('timeout', function (e) {
+            // console.log('timeout error', e);
+            reject({
+                name: 'TimeoutError',
+                message: 'timeout',
+                code: 'ERR_TIMEOUT',
+                request: xhr,
+            });
+            fetching.delete(url);
+        });
+        // 仅在网络层级出现错误时才触发
+        xhr.addEventListener('error', function (e) {
+            // console.log('error', e);
+            reject({
+                name: 'NetworkError',
+                message: 'network error',
+                code: 'ERR_NETWORK',
+                request: xhr,
+            });
+            fetching.delete(url);
+        });
+        // 发送请求:
+        xhr.open(method, url);
+        bindXHRConfig(xhr, requestInfo);
+        xhr.send(data);
+    })
+        .then<[AutoAbortableFetchResponse<T>, undefined]>((res: AutoAbortableFetchResponse<T>) => {
+            return [res, undefined];
         })
-        .catch((err) => {
-            return [
-                null,
-                {
-                    name: err.name,
-                    message: err.message,
-                    code: 'ERR_NETWORK',
-                },
-            ];
+        .catch<[null, RejectType]>((e: RejectType) => {
+            return [null, e];
         });
 }
 
