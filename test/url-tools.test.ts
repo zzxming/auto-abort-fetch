@@ -11,7 +11,6 @@ describe('测试 url 操作函数', () => {
             fragment: '',
             fullPath: 'www.baidu.com',
         });
-
         expect(parseURL('www.baidu.com:80')).toEqual({
             protocol: '',
             hostname: 'www.baidu.com',
@@ -21,7 +20,6 @@ describe('测试 url 操作函数', () => {
             fragment: '',
             fullPath: 'www.baidu.com:80',
         });
-
         expect(parseURL('http://www.baidu.com:80')).toEqual({
             protocol: 'http',
             hostname: 'www.baidu.com',
@@ -40,7 +38,6 @@ describe('测试 url 操作函数', () => {
             fragment: '',
             fullPath: 'http://www.baidu.com:80/some/s?',
         });
-
         expect(parseURL('http://www.baidu.com:80/some/s?')).toEqual({
             protocol: 'http',
             hostname: 'www.baidu.com',
@@ -95,7 +92,6 @@ describe('测试 url 操作函数', () => {
             fragment: '#/home/s',
             fullPath: 'http://www.baidu.com/some/s?#/home/s',
         });
-
         expect(parseURL('http://www.baidu.com:80/some/s#/home/s')).toEqual({
             protocol: 'http',
             hostname: 'www.baidu.com',
