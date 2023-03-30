@@ -55,6 +55,7 @@ console.log(res.data.message);
 | headers            | { [key: string]: string; }                                                | An object containing request headers.                                 |
 | method             | string                                                                    | The HTTP method to use for the request.                               |
 | timeout            | number                                                                    | The timeout for the request, in milliseconds.                         |
+| querys             | { [k: string]: string &#124; string[]; }                                  | An object containing url query parameters.                            |
 | data               | any                                                                       | The data to send with the request.                                    |
 | responseType       | "arraybuffer" &#124; "blob" &#124; "document" &#124; "json" &#124; "text" | The expected response type for the request.                           |
 | signal             | AbortSignal                                                               | The signal used to cancel the request.                                |
