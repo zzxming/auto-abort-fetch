@@ -1,4 +1,4 @@
-import { jointQueryInputURL, Querys } from '@/utils/url-tools';
+import { jointQueryInputURL, Querys } from './utils/url-tools';
 // export type ResponseType<T> = T extends 'fetch'
 //     ? FetchResponseType
 //     : T extends 'XMLHtteRequest'

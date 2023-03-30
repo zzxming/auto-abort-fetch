@@ -10,10 +10,6 @@
 		"noImplicitThis": true,
 		"declaration":  true,
 		"sourceMap": true,
-		"paths": {
-			"@/*": ["src/*"]
-		},
-		"baseUrl": "."
 	},
 	"include": ["./src"],
 }
