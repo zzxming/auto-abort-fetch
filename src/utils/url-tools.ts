@@ -3,10 +3,10 @@ export type Querys = {
 };
 
 /** url splice querys */
-export const jointQueryInputURL = (url: string, querys: Querys) => {
+export const jointQueryInputURL = (url: string, querys: Querys | undefined) => {
     let { protocol, hostname, port, path, fragment, query: originQuerys } = parseURL(url);
     let fullURL = `${protocol ? protocol + '://' : ''}${hostname}${port ? `:${port}` : ''}${path}`;
-
+    if (!querys) querys = {};
     if (!Object.keys(querys).length && !Object.keys(originQuerys).length) {
         return fullURL;
     }
