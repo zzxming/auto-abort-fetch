@@ -1,6 +1,6 @@
 {
     "name": "auto-abortable-fetch",
-    "version": "2.0.0",
+    "version": "2.0.1",
     "description": "Automatically interrupt the last same http request",
     "main": "dist/auto-abortable-fetch.js",
     "typings": "dist/auto-abortable-fetch.d.ts",
