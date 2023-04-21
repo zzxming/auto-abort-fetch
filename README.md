@@ -1,21 +1,17 @@
 # auto-abort-fetch.js
 
-## Pre-requisites
-
-You can use it on Node 17.5.0 (or later) or a browser version that supports fetch.
-
 ## Usage
 
 ```js
 import autoAbortableFetch from 'auto-abortable-fetch';
 let [res, err] = await autoAbortableFetch({
-    url: 'https://xxx',
-    method: 'get',
-    headers: {},
-    timeout: 5000,
-    querys: {},
-    data: {},
-    responseType: 'json',
+	url: 'https://xxx',
+	method: 'get',
+	headers: {},
+	timeout: 5000,
+	querys: {},
+	data: {},
+	responseType: 'json',
 });
 let { config, ok, url, data, status, statusText, request } = res;
 let { config, name, message, code } = err;
@@ -26,8 +22,8 @@ import autoAbortableFetch from 'auto-abortable-fetch';
 let controller = autoAbortableFetch.CreateAbortSignal();
 let signal = controller.signal;
 let [res, err] = await autoAbortableFetch({
-    url: 'https://xxx',
-    signal,
+	url: 'https://xxx',
+	signal,
 });
 
 // cancel request
@@ -38,7 +34,7 @@ controller.cancel();
 
 ```ts
 interface ResponseData {
-    message: string;
+	message: string;
 }
 
 let [res, err] = await autoAbortableFetch<ResponseData>({ url: 'https://xxx' });
